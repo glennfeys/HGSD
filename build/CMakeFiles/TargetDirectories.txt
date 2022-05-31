@@ -1,0 +1,3 @@
+/mnt/c/Users/glenn/Desktop/thesis/HGSD/build/CMakeFiles/rebuild_cache.dir
+/mnt/c/Users/glenn/Desktop/thesis/HGSD/build/CMakeFiles/edit_cache.dir
+/mnt/c/Users/glenn/Desktop/thesis/HGSD/build/CMakeFiles/hgsd.dir
