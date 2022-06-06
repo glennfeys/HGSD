@@ -9,16 +9,18 @@ using namespace std;
  
 // Number of individuals in each generation
 #define POPULATION_SIZE 10
+#define KEPT_FRACTION 0.7
+#define MAX_TIME 3600 // 1 hour
 #define MAX_IT_RESTART 100000
 #define MAX_ITERATIONS 1000000
-#define KEPT_FRACTION 0.7
+#define MAX_IT_NO_IMP 30000
+
 #define DRONES_AMOUNT 0
 #define VEHICLES_AMOUNT 6
 #define LOCATIONS_AMOUNT 10
 #define MAX_X 1000
 #define MAX_Y 1000
-#define MAX_TIME 3600 // 1 hour
-#define MAX_IT_NO_IMP 30000
+
 
 struct thread_data {
     int thread_id;
