@@ -652,6 +652,7 @@ void test_cross_over3() {
     delete clone;
 }
 
+// run all tests
 void Tests::runTests() {
     cout << "Testing" << endl;
     cout << "------------------" << endl;

@@ -24,7 +24,6 @@ public:
     ~Location();
 
     float distance(Location* b);
-    float distance(int b, vector<float*>& distanceMatrix);
     static float distance(int a, int b, vector<float*>& distanceMatrix) {
         if (a == b) return 0.0;
         return distanceMatrix[max(a, b)][min(a, b)];

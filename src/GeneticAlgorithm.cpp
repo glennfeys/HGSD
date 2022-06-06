@@ -33,69 +33,7 @@ struct thread_data {
 int max_time = MAX_TIME;
 string out_file = "routes.txt";
 
-void add_rand_location(DVRPD& vrp, vector<Routes*> population) {
-    Location* loc = vrp.addLocation(rand() % MAX_X, rand() % MAX_Y);
-    for (Routes* routes : population) {
-        routes->addLocation(loc->id);
-    }
-}
-/*
-void remove_location(DVRPD& vrp, vector<Routes*> population) {
-    // get best Loc
-    Location* best_loc;
-    float best = FLT_MAX;
-    for (Location* loc : population[0]->free_locations) {
-        float f = loc->distance(0, vrp.distance_matrix);
-        if (f < best) {
-            best = f;
-            best_loc = loc;
-        }
-    }
-
-    unordered_set<Location*> locations;
-    locations.insert(best_loc);
-
-    for (size_t i = 0; i < population.size()*KEPT_FRACTION; i++)
-    {
-        population[i]->remove_locations(locations, NULL, 0);
-    }
-    
-    vrp.removeLocation(best_loc);
-}*/
-
-
-void remove_route(DVRPD* vrp, vector<Routes*> population) {
-    // get best route
-    
-    Route route;
-    float best = 0.0;
-    for (Route r : population[0]->routes) {
-        float f = r.length / (population[0]->getRouteLength(&r) + Vehicle::maxT);
-        if (f > best) {
-            best = f;
-            route = r;
-        }
-    }
-
-    unordered_set<int> locations;
-    RouteNode* curr = &population[0]->nodes[route.start];
-    // get locations in route
-    while (curr->location != 0) {
-        locations.insert(curr->location);
-        curr = &population[0]->nodes[curr->next];
-    }
-
-    for (size_t i = 0; i < population.size(); i++)
-    {
-        population[i]->remove_locations(locations);
-    }
-    
-    for (int loc: locations) {
-        vrp->removeLocation(loc);
-    }
-
-}
-
+// get diversity of a solution in the population
 float getDiversity(Routes* routes, float* divs) {
     const int top_n = 5;
     multiset<float> neighbors;
@@ -130,6 +68,7 @@ void print_diversity(multiset<pair < float, Routes* >>* population, float* divs)
     }  
 }
 
+// get biased fitness score based on fitness and diversity
 float getBiasedFitness(Routes* routes, float best, float* divs) {
     float fitness = routes->getFitness();
 
@@ -143,6 +82,7 @@ float getBiasedFitness(Routes* routes, float best, float* divs) {
     return fitness_perc * fitness + (1.0-fitness_perc) * fitness * diversity;
 }
 
+// calculate and set diversity of a new solution in a population
 void setDiversity(Routes* routes, float* divs, multiset<pair < float, Routes* >>* population) {
     auto it = population->begin();
     int id1 = routes->id;
@@ -168,7 +108,7 @@ void setDiversity(Routes* routes, float* divs, multiset<pair < float, Routes* >>
     }
 }
 
-
+// run our genetic algorithm on the given population
 void runGeneticAlgorithm(multiset<pair < float, Routes* >>* population, int min_it, int max_it, int max_it_no_imp, bool print_score) {
 
     int runs = 0;
@@ -223,33 +163,12 @@ void runGeneticAlgorithm(multiset<pair < float, Routes* >>* population, int min_
         runs++;
         generation++;
 
-        /*Routes* best = population->begin()->second;
-        auto it = population->begin();
-
-        while(it != population->end()) {
-            it->second->best1 = best;
-            it++;
-        }*/
-
-        //TOOD redundant?
         float curr_fitness = population->begin()->first;
 
         if (curr_fitness < best_fitness) {
             best_fitness = curr_fitness;
             runs = 0;
         }
-
-        /*
-        UNCOMMENT TO ADD LOCATIONS AND REMOVE LOCATIONS
-        if (generation > 20000 && generation % 5000 == 4999) {
-            //remove_route(*vrp, population);
-        }
-
-        if (generation % 500 == 499) {
-            //add_location(*vrp, population);
-        }
-        */
-        
  
         // Perform Elitism, that mean 10% of fittest population
         // goes to the next generation
@@ -270,7 +189,6 @@ void runGeneticAlgorithm(multiset<pair < float, Routes* >>* population, int min_
             parent->mutate(mutation, true);
         } else {
             // CROSS-OVER
-            //cout << "co" << endl;
             auto it = population->begin();
             advance(it, rand() % POPULATION_SIZE);
             Routes* parent1 = it->second;
@@ -295,40 +213,14 @@ void runGeneticAlgorithm(multiset<pair < float, Routes* >>* population, int min_
         } else {
             population->insert({mf, mutation});
         }
-        /*
-        auto it_p = population->begin();
-
-        while(it_p->first < mf) {
-            it_p++;
-        }
-
-        if (it_p->first == mf) {
-            population->insert({0.0f, mutation});
-        } else {
-            population->insert({mf, mutation});
-        }*/
         
-        /*
-        UNCOMMENT FOR ANIMATIONS
-        if (generation % 1000 == 0) {
-            char buffer [50];
-            sprintf (buffer, "../notebooks/animation/routes%d.txt", generation);
-            ofstream file(buffer);
-            population[0]->print(file);
-            file.close();
-
-            //add_rand_location(*vrp, population);
-            //remove_location(*vrp, population);
-        }
-        */
-        
-
+        //uncomment for extra debug info
         /*if (generation % 10000 == 0) {
             //cout<< "Generation: " << generation << "\t";
             //cout<< "Fitness: "<< population->begin()->second->getFitness() << "\n";
-            //cout<< "makespan: "<< population->begin()->second->getFitnessDistMin2() << "\n";
+            //cout<< "makespan: "<< population->begin()->second->getMakespan() << "\n";
 
-            cout << population->begin()->second->getFitnessDistMin2() << "\n";
+            cout << population->begin()->second->getMakespan() << "\n";
 
             //for (int i=0; i<8; i++) {
             //    cout << muts[i] << ", ";
@@ -337,23 +229,19 @@ void runGeneticAlgorithm(multiset<pair < float, Routes* >>* population, int min_
             //print_diversity(population, divs);
         }*/
      }
+
      cout<< "Generation: " << generation << "\t";
      cout<< "Fitness: "<< population->begin()->second->getFitness() << "\n";
-     cout<< "Distance: "<< population->begin()->second->getFitnessDistance() << "\t";
-     cout<< "makespan: "<< population->begin()->second->getFitnessMakespan() << " h" << "\t";
-     cout<< "P/U 3: "<< population->begin()->second->getFitnessRatio3() << "\t";
-     cout<< "DMin: "<< population->begin()->second->getFitnessDistMin2() << "\t";
-     cout<< "P/U 1: "<< population->begin()->second->getFitnessRatio() << "\n";
+     cout<< "Distance: "<< population->begin()->second->getTotalDistance() << "\t";
+     cout<< "D/H: "<< population->begin()->second->getFitnessDeliveriesPerDistance() << "\t";
+     cout<< "makespan: "<< population->begin()->second->getMakespan() << "\n";
 
      if (print_score)
         print_diversity(population, divs);
-    
-    /*for (pair<float, Routes*> routes : population) {
-        if (routes.second != population.begin()->second)
-            delete routes.second;
-    }*/
+
 }
 
+// keep top n of the population and remove others
 void get_top_n(multiset<pair < float, Routes* >>* population, unsigned int n) {
     auto it = population->begin();
     advance(it, n);
@@ -368,6 +256,7 @@ void get_top_n(multiset<pair < float, Routes* >>* population, unsigned int n) {
     population->erase(it_s, population->end());
 }
 
+// get a solution from random restart
 pair <float, Routes*> solution_from_random(DVRPD* vrp, int min_it, int max_it, int it_no_imp) {
     multiset<pair < float, Routes* >> population;
 
@@ -383,6 +272,7 @@ pair <float, Routes*> solution_from_random(DVRPD* vrp, int min_it, int max_it, i
     return *population.begin();
 }
 
+// check if given solution is better than the best, and if so, write away best solution
 void check_best(pair <float, Routes*>* best, pair <float, Routes*>* sol) {
     if (sol->first < best->first) {
         *best = *sol;
@@ -392,6 +282,7 @@ void check_best(pair <float, Routes*>* best, pair <float, Routes*>* sol) {
     }
 }
 
+// check fitness function on given vrp solution file 
 void check_solution(DVRPD* vrp, string file) {
     Routes* routes = new Routes(vrp);
     file.resize(file.size() - 3);
@@ -399,13 +290,13 @@ void check_solution(DVRPD* vrp, string file) {
     routes->routes_from_file(file);
 
     cout << "max fitness: " << routes->getFitness() << endl;
-    cout << "min distance fitness: " << routes->getFitnessDistance() << endl;
+    cout << "min distance fitness: " << routes->getTotalDistance() << endl;
     cout << "min makespan: " << routes->getFitnessMakespan() << " h" << endl;
-
 
     delete routes;
 }
 
+// run our head worker that processes head population with best solutions
 void* run_head_thread(void* threadarg) {
     struct thread_data *my_data;
     my_data = (struct thread_data *) threadarg;
@@ -477,11 +368,10 @@ void* run_head_thread(void* threadarg) {
     pthread_exit(NULL);
 }
 
+// run worker thread that does random restarts and processes them if we have too many
 void* run_thread(void* threadarg) {
     struct thread_data *my_data;
     my_data = (struct thread_data *) threadarg;
-
-    //cout << "Thread created with ID : " << my_data->thread_id << endl;
 
     while(time(0) - my_data->start_time < max_time) {
 
@@ -505,7 +395,6 @@ void* run_thread(void* threadarg) {
 
             runGeneticAlgorithm(&population, 100000, MAX_ITERATIONS, MAX_IT_NO_IMP, true);
 
-            //TODO best 2 ?
             get_top_n(&population, 2);
 
             my_data->mtx->lock();
@@ -553,10 +442,11 @@ void* run_thread(void* threadarg) {
     pthread_exit(NULL);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
+    //uncomment for running tests
     //Tests* t = new Tests();
     //t->runTests();
+
     srand((unsigned)(time(0)));
 
     if (argc != 5 && argc != 7) {
@@ -570,9 +460,9 @@ int main(int argc, char *argv[])
     }
 
     // create VRP with defined amount of drones, vehicles and locations
-    //DVRPD* vrp = new DVRPD("../../data/Vrp-Set-X/X/X-n1001-k43.vrp", DRONES_AMOUNT,VEHICLES_AMOUNT);
     DVRPD* vrp = new DVRPD(argv[1], stoi(argv[3]), stoi(argv[2]));
-    //DVRPD* vrp = new DVRPD("../data/tests/test1.vrp", DRONES_AMOUNT,VEHICLES_AMOUNT);
+
+    // uncomment to use random vrp instead of file
     //DVRPD* vrp = new DVRPD(DRONES_AMOUNT,VEHICLES_AMOUNT);
     //vrp->createRandomLocations(LOCATIONS_AMOUNT, MAX_X, MAX_Y);
 
@@ -580,11 +470,11 @@ int main(int argc, char *argv[])
 
     pthread_t threads[thread_num];
     thread_data td[thread_num];
-    //struct thread_data td[thread_num];
     mutex mtx, best_mtx;
     void *status;
 
-    //check_solution(vrp, argv[1]);
+    // uncomment to check solution in same map
+    // check_solution(vrp, argv[1]);
 
     multiset<pair < float, Routes* >> new_sols;
 

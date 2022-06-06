@@ -1,5 +1,6 @@
 #include "Routes.h"
 
+// create routes for vrp
 Routes::Routes(DVRPD* vrp) {
     this->vrp = vrp;
     for (unsigned int i=0; i<vrp->getLocations().size(); i++) {
@@ -9,12 +10,14 @@ Routes::Routes(DVRPD* vrp) {
         this->routes.push_back({0, -1.0f, 0});
     }
 
-    //this->location_route_map = new int[this->vrp->getLocations().size()];
-    for (int i=0; i< this->vrp->getLocations().size(); i++) {
+    for (unsigned int i=0; i< this->vrp->getLocations().size(); i++) {
         this->location_route_map.push_back(-1);
     }
 }
 
+Routes::~Routes() {}
+
+// get routes give by solution file
 void Routes::routes_from_file(string file) {
     string line;
     ifstream myfile(file);
@@ -51,19 +54,20 @@ void Routes::routes_from_file(string file) {
 
 }
 
-Routes::~Routes() {}
-
+// git fitness score of how good the routes are lower is better
 float Routes::getFitness() {
-    float fit = getFitnessDistMinRatio2();
+    float fit = getFitnessMakespan();
     this->fitness = fit;
     return fit;
 }
 
+// manhattan distance between l1 and l2
 float manhatten(Location* l1, Location* l2) {
     return abs(l1->x - l2->x) + abs(l1->y - l2->y);
 }
 
-float Routes::getFitnessDistMin() {
+// get makespan with manhattan distance for trucks and LPT drone scheduling
+float Routes::getMakespanManhattan() {
     float res = 0;
 
     Location* depot = vrp->depot;
@@ -93,7 +97,6 @@ float Routes::getFitnessDistMin() {
 
         fitness += manhatten(locs[curr], depot);
 
-        //cout << "V: " << fitness << endl;
         if (fitness > res) {
             res = fitness;
         }
@@ -124,7 +127,6 @@ float Routes::getFitnessDistMin() {
         }
 
         for (int i=0; i<drones; i++) {
-            //cout << "D: " << ds[i] << endl;
             if (ds[i] > res) {
                 res = ds[i];
             }
@@ -145,7 +147,8 @@ float Routes::getFitnessDistMin() {
     return res; 
 }
 
-float Routes::getFitnessDistMinRatio() {
+// get fitness for makespan with manhattan distance for trucks and LPT drone scheduling
+float Routes::getFitnessMakespanManhattan() {
     float longest_route = 0.0;
     float fitness = 0.0;
 
@@ -244,7 +247,8 @@ float Routes::getFitnessDistMinRatio() {
     return  res;
 }
 
-float Routes::getFitnessDistMin2() {
+// get makespan with Euclidian distance for trucks and LPT drone scheduling
+float Routes::getMakespan() {
     float res = 0;
 
     for (Route r : this->routes) {
@@ -271,7 +275,6 @@ float Routes::getFitnessDistMin2() {
 
         fitness += this->vrp->distance(curr,0);
 
-        //cout << "V: " << fitness << endl;
         if (fitness > res) {
             res = fitness;
         }
@@ -300,7 +303,6 @@ float Routes::getFitnessDistMin2() {
         }
 
         for (int i=0; i<drones; i++) {
-            //cout << "D: " << ds[i] << endl;
             if (ds[i] > res) {
                 res = ds[i];
             }
@@ -321,7 +323,8 @@ float Routes::getFitnessDistMin2() {
     return res; 
 }
 
-float Routes::getFitnessDistMinRatio2() {
+// get fitness for makespan with Euclidian distance for trucks and LPT drone scheduling
+float Routes::getFitnessMakespan() {
     float longest_route = 0.0;
     float fitness = 0.0;
 
@@ -396,20 +399,11 @@ float Routes::getFitnessDistMinRatio2() {
             }
         }
 
-    } 
-
-    
+    }
 
     int count = 0;
     for (pair<int, float> p : ts) {
-        /*if (count < routes.size()) {
-            fitness += p.first / (p.second + 2 * longest_route);
-        } else {
-            fitness += p.first / (p.second + 2 * longest_route);
-        }*/
         fitness += p.first / (p.second + 500 * longest_route);
-        
-
         count++;
     }
 
@@ -432,7 +426,8 @@ float Routes::getFitnessDistMinRatio2() {
     return  res;
 }
 
-float Routes::getRouteLength(Route* route) {
+// get distance of the truck route given
+float Routes::getRouteDistance(Route* route) {
     if (route->fitness != -1.0f) {
         return route->fitness;
     }
@@ -464,80 +459,8 @@ float Routes::getRouteLength(Route* route) {
     return fitness;
 }
 
-int* Routes::routeToArray(Route& route) {
-    int* res = new int[route.length];
-    RouteNode* curr = &this->nodes[route.start];
-    for (unsigned int i=0; i<route.length; i++) {
-        res[i] = curr->location;
-        curr = &this->nodes[curr->next];
-    }
-    return res;
-}
-
-int Routes::getRouteLevenshteinDist(Route& route1, Route& route2, Routes* mutation) {
-    // d is een tabel met lenStr1+1 rijen and lenStr2+1 kolommen
-    int s1= route1.length + 1;
-    int s2 = route2.length + 1;
-
-    int* r1 = this->routeToArray(route1);
-    int* r2 = mutation->routeToArray(route2);
-
-    int* d = new int[s1*s2];
- 
-    for (int i=0; i<s1; i++) {
-        d[i*s2] = i;
-    }
-        
-    for (int j=0; j<s2; j++) {
-        d[j] = j;
-    }
-
-    int cost = 0;
- 
-    for (int i = 1; i < s1; i++) {
-        for (int j = 1; j < s2; j++) {
-            if (r1[i-1] == r2[j-1]){
-                cost = 0;
-            } else {
-                cost = 1;
-            }
-            d[i*s2 + j] = min(min(d[(i-1)*s2 + j] + 1, d[i*s2 + j-1] + 1),  d[(i-1)*s2 + j-1] + cost);
-        }
-            
-    }
-
-    int res = d[s1* s2 - 1];
-
-    delete [] r1;
-    delete [] r2;
-    delete [] d;
-       
- 
-    return res;
-}
-
-float Routes::getBiasedFitnessRatio() {
-
-    float fitness = getFitnessRatio();
-
-    if (this == this->best1)
-        return fitness;
-
-    float bf = this->best1->getFitnessRatio();
-
-    if (fitness < bf)
-        return fitness;
-    
-    //if (fitness > 60) cout << max_time << endl;
-    float diversity = this->get_diversity(this->best1);
-
-    //float diversity = (diversity1 + diversity2 + diversity3) / 3;
-
-    // TODO tweak & dont make hardcoded
-    return 0.9 * fitness + 0.1 * fitness * diversity;
-}
-
-float Routes::getFitnessRatio2() {
+// fitness function for deliveries/hour
+float Routes::getFitnessDeliveriesPerHour() {
     int drones = vrp->getDrones().size();
 
     float longest_route = 0.0f;
@@ -548,7 +471,7 @@ float Routes::getFitnessRatio2() {
     for(auto route = this->routes.begin(); route < this->routes.end(); route++) {
         int route_len = route->length;
 
-        float route_time = this->getRouteLength(&(*route)) / (100 * Vehicle::speed) + Vehicle::loadTime + route_len * Vehicle::dropTime;
+        float route_time = this->getRouteDistance(&(*route)) / (100 * Vehicle::speed) + Vehicle::loadTime + route_len * Vehicle::dropTime;
 
         if (route->length > Vehicle::maxCapacity) {
             route_len -= route->length - Vehicle::maxCapacity;
@@ -569,7 +492,6 @@ float Routes::getFitnessRatio2() {
         }
 
         d_time /= drones;
-        //d_time = (4/3 - 1/(3*drones)) * d_time;
 
         if (d_time > longest_route) {
             longest_route = d_time;
@@ -578,7 +500,6 @@ float Routes::getFitnessRatio2() {
         if (d_time != 0.0) {
             fitness += this->free_locations.size() / (drones*longest_route);
         }
-
         
     }
 
@@ -588,75 +509,12 @@ float Routes::getFitnessRatio2() {
 
         fitness += p.first / (p.second + longest_route);
     }
-    
-    
-    //if (fitness > 60) cout << max_time << endl;
 
     return -fitness;
 }
 
-float Routes::getFitnessRatio4() {
-    int drones = vrp->getDrones().size();
-
-    float longest_route = 0.0f;
-
-    vector<pair<int, float>> route_times;
-
-    float avg_time = 0.0f;
-    
-    float fitness = 0.0;
-    for(auto route = this->routes.begin(); route < this->routes.end(); route++) {
-        int route_len = route->length;
-
-        float route_time = this->getRouteLength(&(*route)) / (100 * Vehicle::speed) + Vehicle::loadTime + route_len * Vehicle::dropTime;
-
-        if (route->length > Vehicle::maxCapacity) {
-            route_len = 0;
-        }
-        
-        if (route_time > longest_route) {
-            longest_route = route_time;
-        }
-        route_times.push_back({route_len, route_time});
-    }
-
-    if (drones == 0) {
-        fitness -= 10 * this->free_locations.size();
-    } else {
-        float d_time = 0.0;
-        for (int loc : this->free_locations) {
-            d_time += 2 * this->vrp->distance(0, loc) / (100*Drone::speed) + Drone::loadTime + Drone::dropTime;
-        }
-
-        d_time /= drones;
-        //d_time = (4/3 - 1/(3*drones)) * d_time;
-
-        if (d_time > longest_route) {
-            longest_route = d_time;
-        }
-
-        if (d_time != 0.0) {
-            avg_time += d_time;
-            fitness += this->free_locations.size() / (drones*longest_route);
-        }
-
-        
-    }
-
-    for (pair<int, float> p : route_times) {
-        avg_time += p.second;
-        if (p.second == 0.0f) 
-            continue;
-        
-        fitness += p.first / (p.second + longest_route);
-    }
-
-    avg_time /=  route_times.size() + 1;
-
-    return  -fitness/longest_route;
-}
-
-float Routes::getFitnessMakespan() {
+// get makespan based on the time with time penalties like load and deliver
+float Routes::getMakespanTime() {
     int drones = vrp->getDrones().size();
 
     float longest_route = 0.0f;
@@ -664,7 +522,7 @@ float Routes::getFitnessMakespan() {
     for(auto route = this->routes.begin(); route < this->routes.end(); route++) {
         int route_len = route->length;
 
-        float route_time = this->getRouteLength(&(*route)) / (100 * Vehicle::speed) + Vehicle::loadTime + route_len * Vehicle::dropTime;
+        float route_time = this->getRouteDistance(&(*route)) / (100 * Vehicle::speed) + Vehicle::loadTime + route_len * Vehicle::dropTime;
 
         if (route->length > Vehicle::maxCapacity) {
             return -1.0f;
@@ -684,7 +542,6 @@ float Routes::getFitnessMakespan() {
         }
 
         d_time /= drones;
-        //d_time = (4/3 - 1/(3*drones)) * d_time;
 
         if (d_time > longest_route) {
             longest_route = d_time;
@@ -694,71 +551,15 @@ float Routes::getFitnessMakespan() {
     return longest_route;
 }
 
-float Routes::getFitnessRatio3() {
-    int drones = vrp->getDrones().size();
-
-    float longest_route = 0.0f;
-
-    vector<pair<int, float>> route_times;
-    
-    float fitness = 0.0;
-    for(auto route = this->routes.begin(); route < this->routes.end(); route++) {
-        int route_len = route->length;
-
-        float route_time = this->getRouteLength(&(*route)) / (100 * Vehicle::speed) + Vehicle::loadTime + route_len * Vehicle::dropTime;
-
-        if (route->length > Vehicle::maxCapacity) {
-            route_len -= route->length - Vehicle::maxCapacity;
-        }
-        
-        if (route_time > longest_route) {
-            longest_route = route_time;
-        }
-        route_times.push_back({route_len, route_time});
-    }
-
-    if (drones == 0) {
-        fitness -= 10 * this->free_locations.size();
-    } else {
-        float d_time = 0.0;
-        for (int loc : this->free_locations) {
-            d_time += 2 * this->vrp->distance(0, loc) / (100*Drone::speed) + Drone::loadTime + Drone::dropTime;
-        }
-
-        d_time /= drones;
-
-        if (d_time > longest_route) {
-            longest_route = d_time;
-        }
-
-        if (d_time != 0.0) {
-            fitness += this->free_locations.size() / (drones*longest_route);
-        }
-
-        
-    }
-
-    for (pair<int, float> p : route_times) {
-        if (p.second == 0.0f) 
-            continue;
-
-        fitness += p.first / (longest_route);
-    }
-    
-    
-    //if (fitness > 60) cout << max_time << endl;
-
-    return -fitness;
-}
-
-float Routes::getFitnessRatio() {
+// get fitness based on the deliveries per distance
+float Routes::getFitnessDeliveriesPerDistance() {
     int drones = vrp->getDrones().size();
 
     const float min_time = Vehicle::maxT;
     
     float fitness = 0.0;
     for(auto route = this->routes.begin(); route < this->routes.end(); route++) {
-        float route_time = this->getRouteLength(&(*route)) / (100 * Vehicle::speed);
+        float route_time = this->getRouteDistance(&(*route)) / (100 * Vehicle::speed);
         int route_len = route->length;
 
         if (route->length > Vehicle::maxCapacity) {
@@ -773,9 +574,8 @@ float Routes::getFitnessRatio() {
             fitness += route_len / (route_time + min_time);
         }
     }
-    
-    
-    //TODO use something like bin packing here
+
+    // TODO maybe use LPT here?
     
     float d_time = 0.0;
     unsigned int j = 0;
@@ -793,118 +593,23 @@ float Routes::getFitnessRatio() {
     if (d_time != 0) {
         fitness += drones * j/(d_time + drones * min_time);
     }
-    
-    //if (fitness > 60) cout << max_time << endl;
 
     return -fitness;
 }
 
-float Routes::getFitnessDistance() {
-    //int drones = this->vrp->getDrones().size();
-    
-    float fitness = 0.0;
+// get total distance of routes
+float Routes::getTotalDistance() {
+    float totalDistance = 0.0;
     for(Route route : this->routes) {
-        float route_len = this->getRouteLength(&route);
-        fitness += route_len;
-        if (route.length == 0) {
-            fitness += 1000;
-        }
+        float route_len = this->getRouteDistance(&route);
+        totalDistance += route_len;
     }
 
     for (int loc : this->free_locations) {
-        fitness += 2 * this->vrp->distance(loc, 0);
+        totalDistance += 2 * this->vrp->distance(loc, 0);
     }
 
-    return fitness;
-    /*
-    DVRPD* vrp = this->vrp;
-
-    sort(
-        this->free_locations.begin(), 
-        this->free_locations.end(), 
-        [vrp](int a, int b) { return vrp->distance(0,a) < vrp->distance(0,b); }
-    );
-    
-    //TODO use something like bin packing here
-    for (int i=0; i<drones; i++) {
-        float d_time = 0.0;
-        unsigned int j = 0;
-        while(j < this->free_locations.size()) {
-            d_time += 2 * this->vrp->distance(0, this->free_locations[j]) / (100*Drone::speed);
-            if (d_time > Vehicle::maxT) {
-                fitness += d_time;
-                
-            }
-            j++;
-        }
-    }
-
-    return fitness;
-    */
-}
-
-// sum travel time of all routes combined of drones and vehicles
-float Routes::getBiasedFitness(){    
-    float fitness = 0.0;
-    for(Route route : this->routes) {
-        float route_time = this->getRouteLength(&route) / (100 * Vehicle::speed);
-        fitness += route_time;
-        //cout << "rt: " << route_time << endl;
-        if (route_time > Vehicle::maxT) {
-            fitness += (route_time - Vehicle::maxT)*5;
-        }
-    }
-
-    
-
-    for(int loc : this->free_locations) {
-        fitness += 2 * this->vrp->distance(0, loc) / (100 * Drone::speed);
-    }
-
-    float diversity = this->get_diversity(this->best1);
-
-    if (diversity == 0.0f)
-        return fitness;
-    
-    // TODO tweak & dont make hardcoded
-    return fitness + (sqrt(10/diversity)*5);
-}
-
-// sum travel time of all routes combined of drones and vehicles
-int Routes::getFitnessAmount(){
-    int drones = this->vrp->getDrones().size();
-    int fitness = 0;
-    for(Route route : this->routes) {
-        fitness += route.length;
-        float route_duration = this->getRouteLength(&route) / (100*Vehicle::speed);
-        
-        float parcelTime = route.length / route_duration;
-        if (route_duration > Vehicle::maxT) {
-            fitness -= (route_duration - Vehicle::maxT) * parcelTime * 2;
-        }
-    }
-
-    int fs_size = this->free_locations.size();
-    float* free_time = new float[fs_size];
-
-    for (int i=0; i<fs_size; i++) {
-        free_time[i] = this->vrp->distance(0,this->free_locations[i]) / (100*Drone::speed);
-    }
-
-    sort(free_time, free_time+fs_size);
-    
-    //TODO use something like bin packing here
-    int j=0;
-    float d_time = 0.0;
-    while(j < fs_size && d_time + free_time[j] < drones * Drone::maxT) {
-        d_time += free_time[j];
-        j++;
-        fitness++;
-    }
-
-    //cout << "fitness2: " << fitness << endl;
-    
-    return -fitness;
+    return totalDistance;
 }
 
 // get random number between start and end, not including end
@@ -916,6 +621,7 @@ int random_num(int start, int end)
     return random_int;
 }
 
+// get previous of node when doing cross over
 int Routes::getCOprev(int n, unordered_set<int>& locations, int end_sec, int end_sec_d) {
     RouteNode curr = this->nodes[n];
 
@@ -933,6 +639,7 @@ int Routes::getCOprev(int n, unordered_set<int>& locations, int end_sec, int end
     return prev;
 }
 
+// get next of node when doing cross over
 int Routes::getCOnext(int n, unordered_set<int>& locations, int start_sec) {
     RouteNode curr = this->nodes[n];
 
@@ -948,11 +655,8 @@ int Routes::getCOnext(int n, unordered_set<int>& locations, int start_sec) {
     return next;
 }
 
-// cross over curent routes with given routes and store in mutation
-// TODO bekijken impact grotere cross-over
+// cross over curent routes with donor routes and store in acceptor
 Routes* Routes::cross_over(Routes* donor, Routes* acceptor){
-
-    //cout << "cross_over" << endl;
 
     int rs_size = donor->routes.size();
     int rand_route_index = random_num(0,rs_size);
@@ -980,13 +684,11 @@ Routes* Routes::cross_over(Routes* donor, Routes* acceptor){
 
     this->op_cross_over(donor, acceptor, rand_route_index, rand_index, rand_len);
 
-    /*if (!acceptor->check_locs("cross-over")) {
-        cout << "BUG";
-    }*/
-
     return acceptor;
 }
 
+// cross over operation between this and donor, storing it in acceptor
+// transfer sequence on donor starting from route and having given index and length to this routes
 void Routes::op_cross_over(Routes* donor, Routes* acceptor, unsigned int r_index, unsigned int index, unsigned int len) {
     if (r_index >= this->routes.size()) {
         cerr << "CO r_index out of bounds";
@@ -1096,20 +798,8 @@ void Routes::op_cross_over(Routes* donor, Routes* acceptor, unsigned int r_index
     }
 }
 
-/*
-bool Routes::check_inf_loop() {
-    for (Route r : this->routes) {
-        int curr = r.start;
-        for (size_t i = 0; i < Vehicle::maxCapacity; i++)
-        {
-            curr = this->next(curr);
-        }
-        if (curr != 0) return false;
-    }
-    return true;
-}*/
-
-bool Routes::check_locs(string name) {
+// debug if there are problems in the routes with length and such
+bool Routes::check_routes(string name) {
     for (Route r : this->routes) {
         int curr = r.start;
         int prev = 0;
@@ -1148,23 +838,7 @@ bool Routes::check_locs(string name) {
     return true;
 }
 
-// remove locations out of the routes except for the sequence starting from exclude with length exclude_len
-void Routes::remove_locations(unordered_set<int>& locations) {
-    // remove locations from free_locations
-    for (int location : locations) {
-        vector<int>::iterator position = find(this->free_locations.begin(), this->free_locations.end(), location);
-        if (position != this->free_locations.end()) {
-            this->free_locations.erase(position);
-        } else {
-            RouteNode node = this->nodes[location];
-            this->nodes[node.prev].next = node.next;
-            this->nodes[node.next].prev = node.prev;
-            node.next = -1;
-            node.prev = -1;
-        }
-    }
-}
-
+// create drone routes by scheduling them with LPT
 void Routes::LPT(vector<int>* result) {
     vector<pair<float, int>> dists;
     for (int fl : this->free_locations) {
@@ -1190,6 +864,7 @@ void Routes::LPT(vector<int>* result) {
 
 }
 
+// print out Routes as a solution file
 void Routes::print(ostream& file) {
     int route_index = 1;
 
@@ -1219,7 +894,7 @@ void Routes::print(ostream& file) {
         }
         file << endl;
     }
-    file << "Makespan " << this->getFitnessDistMin2();
+    file << "Makespan " << this->getMakespan();
 }
 
 // clone this routes to given pointer
@@ -1230,6 +905,7 @@ void Routes::clone_to(Routes* mutation) {
     mutation->routes = this->routes;
 }
 
+// swap free heuristic to swap random location of route and free locations
 bool SF_random(Routes* mutation, int* r_index, int* loc, int* fl_index) {
     int fl_size = mutation->free_locations.size();
     int r_size = mutation->routes.size();
@@ -1250,6 +926,7 @@ bool SF_random(Routes* mutation, int* r_index, int* loc, int* fl_index) {
     return true;
 }
 
+// swap free heuristic to swap random free location to a close neighbor in a route
 bool SF_heuristic1(Routes* mutation, int* r_index, int* loc, int* fl_index) {
     int fl_size = mutation->free_locations.size();
     int random_fl_index = random_num(0,fl_size);
@@ -1288,16 +965,8 @@ bool SF_heuristic1(Routes* mutation, int* r_index, int* loc, int* fl_index) {
     return true;
 }
 
-// swap random route node with free location
+// swap route node with free location
 Routes* mutate_swap_free(Routes* mutation) {
-    /*
-        HEURISTIEK:
-            - Swap met dichte free values probeer random 3-10 zoals bij add
-            - omgekeerd zoals bij heuristiek 2 add, start met free_loc en zoek swap
-    */
-
-    //cout << "mutate_swap_free" << endl;
-
     int r_index;
     int loc;
     int fl_index;
@@ -1314,12 +983,10 @@ Routes* mutate_swap_free(Routes* mutation) {
 
     mutation->op_swap_free(r_index, loc, fl_index);
 
-    /*if (!mutation->check_locs("mutate_swap_free")) {
-        cout << "BUG";
-    }*/
     return mutation;
 }
 
+// swap free operation, swap given location to given free location
 void Routes::op_swap_free(unsigned int r_index, unsigned int loc, unsigned int fl_index) {
     if (r_index >= this->routes.size()) {
         cerr << "SF r_index out of bounds";
@@ -1357,10 +1024,11 @@ void Routes::op_swap_free(unsigned int r_index, unsigned int loc, unsigned int f
     node->prev = -1;
 
     this->free_locations[fl_index] = loc;
-    //TODO kan beter door verschil in fitness te berekenen hier
+    //TODO can be better to calculate and set difference in fitness here
     route->fitness = -1.0f;
 }
 
+// swap poss heuristic to swap random sequence to random position
 bool SP_random(Routes* mutation, int* route, int* index, int* len, int* insert_pos) {
     int r_size = mutation->routes.size();
 
@@ -1381,6 +1049,7 @@ bool SP_random(Routes* mutation, int* route, int* index, int* len, int* insert_p
     return true;
 }
 
+// swap poss heuristic to swap random sequence to best position
 bool SP_heuristic1(Routes* mutation, int* route, int* index, int* len, int* insert_pos) {
     int r_size = mutation->routes.size();
 
@@ -1432,8 +1101,6 @@ bool SP_heuristic1(Routes* mutation, int* route, int* index, int* len, int* inse
         curr = &mutation->nodes[curr->next];
     }
 
-    //TODO laatste plaats zit hier nog niet in!
-
     *insert_pos = best;
     *route = rand_route_index;
 
@@ -1443,17 +1110,6 @@ bool SP_heuristic1(Routes* mutation, int* route, int* index, int* len, int* inse
 // move sequence of nodes in routes to different position
 // e.g: A-B-C-D-E => D-E-A-B-C
 Routes* mutate_swap_pos(Routes* mutation) {
-    /*
-        HEURISTIEK:
-            - swap stukken waar start en end dicht bij elkaar
-            - swap met pos waar start van seq en end van seq dichtst staat
-                1. bepaal stuk voor swap
-                2. loop over route, en bepaal distance met start en end. 
-                3. pak degene die het dichtste ligt (maar wel ver van de initiële pos?)
-    */
-
-    //cout << "mutate_swap_pos" << endl;
-    
     int route;
     int index;
     int len;
@@ -1464,13 +1120,10 @@ Routes* mutate_swap_pos(Routes* mutation) {
 
     mutation->op_swap_pos(route, index, len, insert_pos);
 
-    /*if(!mutation->check_locs("mutate_swap_pos")){
-        cout << "bug";
-    }*/
-
     return mutation;
 }
 
+// swap position operation to swap sequence on given route, index and length to gthe given position
 void Routes::op_swap_pos(unsigned int r_index, unsigned int index, unsigned int len, unsigned int insert_pos) {
     if (r_index >= this->routes.size()) {
         cerr << "SP r_index out of bounds";
@@ -1509,6 +1162,7 @@ void Routes::op_swap_pos(unsigned int r_index, unsigned int index, unsigned int 
     route->fitness = -1.0f;
 }
 
+// mutation cross-over heuristic to do cross over between 2 random sequences of 2 random routes
 bool MCO_random(Routes* mutation, int* route1, int* index1, int* len1, int* route2, int* index2, int* len2) {
     int r_size = mutation->routes.size();
     int rand_route_index1 = random_num(0,r_size);
@@ -1542,6 +1196,8 @@ bool MCO_random(Routes* mutation, int* route1, int* index1, int* len1, int* rout
     return true;
 }
 
+// mutate cross-over heurisitic to do cross over between random sequence and another sequence of another route
+// where both start and stop of the 2 sequences are close to each other
 bool MCO_heuristic1(Routes* mutation, int* route1, int* index1, int* len1, int* route2, int* index2, int* len2) {
     // get 2 locs close to start and end from different route and replace parts.
 
@@ -1622,7 +1278,7 @@ bool MCO_heuristic1(Routes* mutation, int* route1, int* index1, int* len1, int* 
         if (curr->location == n1->location || curr->location == n2->location) {
             if (len == 0) {
                 reverse = curr->location != n1->location;
-                // TODO implement met reverse erbij!
+                // TODO also implement with reverse
                 if (reverse)
                     return false;
                 *index2 = index;
@@ -1650,17 +1306,6 @@ bool MCO_heuristic1(Routes* mutation, int* route1, int* index1, int* len1, int* 
 
 // take 2 routes and do a cross-over between them
 Routes* mutate_cross_over(Routes* mutation) {
-    /*
-        HEURISTIEK:
-            - zoek start en stop stukken die dicht bij elkaar liggen.
-                1. neem random route, start en end
-                2. getNeighbourhood(start) en getNeighbourhood(end)
-                3. zoek in de neighbourhoods naar neighbours met eenzelfde route verschillend van de random route
-                4. maak hiervan de cross over. (let op welke is start/stop in LocationInfo?)
-    */
-
-   //cout << "mutate_cross_over" << endl;
-
    int route1;
    int index1;
    int len1;
@@ -1673,12 +1318,10 @@ Routes* mutate_cross_over(Routes* mutation) {
 
     mutation->op_cross_over_m(route1, index1, len1, route2, index2, len2);
     
-    /*if (!mutation->check_locs("mutate_cross_over")) {
-        cout << "BUG";
-    }*/
     return mutation;
 }
 
+// mutate cross over operation that performs cross over between the 2 given sequences of the given route, index and length
 void Routes::op_cross_over_m(unsigned int r_index1, unsigned int index1, unsigned int len1, unsigned int r_index2, unsigned int index2, unsigned int len2) {
     if (r_index1 >= this->routes.size() || r_index1 >= this->routes.size()) {
         cerr << "COM r_index out of bounds";
@@ -1757,6 +1400,7 @@ void Routes::op_cross_over_m(unsigned int r_index1, unsigned int index1, unsigne
     route2->fitness = -1.0f;
 }
 
+// mutate add heuristic that adds random free location on random position of random route
 bool MA_random(Routes* mutation, int* route, int* index, unordered_set<int>* locs) {
     int r_size = mutation->routes.size();
     int rand_route_index = random_num(0,r_size);
@@ -1767,7 +1411,7 @@ bool MA_random(Routes* mutation, int* route, int* index, unordered_set<int>* loc
     unsigned int add_amount = random_num(1, Vehicle::maxCapacity-route_size+1);
     add_amount = min((int)add_amount, (int)mutation->free_locations.size());
     
-    //TODO kijk of zonder route_size >= Vehicle::maxCapacity beter is
+    //TODO test if better without route_size >= Vehicle::maxCapacity
     if (route_size >= Vehicle::maxCapacity || mutation->free_locations.size() == 0)
         return false;
 
@@ -1790,12 +1434,11 @@ bool MA_random(Routes* mutation, int* route, int* index, unordered_set<int>* loc
     return true;
 }
 
+// mutate add heuristic that adds random free location to a route on a position  close to the free location
 bool MA_heuristic1(Routes* mutation, int* route, int* index, unordered_set<int>* locs) {
     /*
         Add add_amount locations to route by getting random freelocs 
         randomly chosen that are the closest to the random insert location
-
-        ideas: add_amount moet meer 1 zijn
     */
     int r_size = mutation->routes.size();
     int rand_route_index = random_num(0,r_size);
@@ -1806,7 +1449,7 @@ bool MA_heuristic1(Routes* mutation, int* route, int* index, unordered_set<int>*
     unsigned int add_amount = random_num(1, Vehicle::maxCapacity-route_size+1);
     add_amount = min((int)add_amount, (int)mutation->free_locations.size());
     
-    //TODO kijk of zonder route_size >= Vehicle::maxCapacity beter is
+    //TODO test if better without route_size >= Vehicle::maxCapacity
     if (route_size >= Vehicle::maxCapacity || mutation->free_locations.size() == 0)
         return false;
 
@@ -1833,7 +1476,7 @@ bool MA_heuristic1(Routes* mutation, int* route, int* index, unordered_set<int>*
             int rand_fl_index = random_num(0,fl_size-i);
             int fl = mutation->free_locations[rand_fl_index];
 
-            //TODO kijken of hier best comp->location of comp_l
+            //TODO check if best comp->location or comp_l
             if (fl == -1 || comp->location >= mutation->vrp->getLocations().size()) {
                 cout << "BUG";
             }
@@ -1854,35 +1497,13 @@ bool MA_heuristic1(Routes* mutation, int* route, int* index, unordered_set<int>*
     return true;
 }
 
-vector<int> nearest_neighbour(DVRPD* vrp, int start, unordered_set<int> locs) {
-    vector<int> result;
-    int prev = start;
-    for(unsigned int i=0; i<locs.size(); i++) {
-        int best;
-        float best_d = FLT_MAX;
-        for (int loc: locs) {
-            float dist = vrp->distance(prev, loc);
-            if (dist < best_d) {
-                best_d = dist;
-                best = loc;
-            }
-        }
-        result.push_back(best);
-        locs.erase(best);
-        prev = best;
-    }
-
-    return result;
-}
-
+// mutate add heuristic
 bool MA_heuristic2(Routes* mutation, int* route, int* index, unordered_set<int>* locs) {
     /*
         get random insert location
         get neighbours of random insert location
 
         randomly chosen that are the closest to the random insert location
-
-        ideas: add_amount moet meer 1 zijn
     */
     int r_size = mutation->routes.size();
     int rand_route_index = random_num(0,r_size);
@@ -1932,6 +1553,7 @@ bool MA_heuristic2(Routes* mutation, int* route, int* index, unordered_set<int>*
     return true;
 }
 
+// mutate add heuristic
 bool MA_heuristic3(Routes* mutation, int* route, int* index, unordered_set<int>* locs) {
     /*
         from random free loc get neighbours and add to closest ?
@@ -1975,10 +1597,6 @@ bool MA_heuristic3(Routes* mutation, int* route, int* index, unordered_set<int>*
     
     locs->insert(fl);
 
-    if (r < 0) {
-        cout << "bug";
-    }
-
     *route = r;
     *index = i;
 
@@ -1987,19 +1605,6 @@ bool MA_heuristic3(Routes* mutation, int* route, int* index, unordered_set<int>*
 
 // Add random free location to random route
 Routes* mutate_add(Routes* mutation) {
-    /*
-    HEURISTIEK: 
-        - ipv random route meer kans aan routes met kortste lengte?
-        - neem 3*add_amount en hou enkel de add_amount dichtste over
-        - Bij grote lengte kleine adds bij kleine lengte grote adds ???
-
-    HEURISTIEK 2:
-        omgekeerd werken starten met free_location en dan route zoeken waar die geadd kan worden.
-        Free location ver van depot meer kans genomen
-    */
-
-   //cout << "mutate_add" << endl;
-
     int route, index;
     unordered_set<int> locs;
 
@@ -2008,13 +1613,11 @@ Routes* mutate_add(Routes* mutation) {
     }
 
     mutation->op_add(route, index, locs);
-    
-    /*if(!mutation->check_locs("mutate_add")) {
-        cout << "bug";
-    }*/
+
     return mutation;
 }
 
+// add operation, adds locs to given route on index
 void Routes::op_add(unsigned int r_index, unsigned int index, unordered_set<int>& locs) {
     if (r_index >= this->routes.size()) {
         cerr << "MA r_index out of bounds: " << r_index;
@@ -2034,16 +1637,9 @@ void Routes::op_add(unsigned int r_index, unsigned int index, unordered_set<int>
     int i=0;
 
     for (int loc : locs) {
-
-
         this->free_locations.erase(find(this->free_locations.begin(), this->free_locations.end(), loc));
 
         RouteNode* node = &this->nodes[loc];
-
-        /* 
-            Heuristiek adden volgens beste route tussen het stuk
-            of e.g. 10 random configs en de beste adden
-        */
 
         if (i==0) {
             node->prev = 0;
@@ -2065,6 +1661,7 @@ void Routes::op_add(unsigned int r_index, unsigned int index, unordered_set<int>
     route->fitness = -1.0f;
 }
 
+// mutate remove heuristic remove random location from random route
 bool MR_random(Routes* mutation, int* route, int* index, int* amount) {
     int r_size = mutation->routes.size();
     *route = random_num(0,r_size);
@@ -2082,7 +1679,7 @@ bool MR_random(Routes* mutation, int* route, int* index, int* amount) {
     return true;
 }
 
-// choose random x indices and remove the one that has the most different nodes from different route amongst it
+// mutate remove heuristic: choose random x indices and remove the one that has the most different nodes from different route amongst it
 bool MR_heuristic1(Routes* mutation, int* route, int* index, int* amount) {
 
     mutation->fill_location_route_map();
@@ -2130,7 +1727,7 @@ bool MR_heuristic1(Routes* mutation, int* route, int* index, int* amount) {
     return true;
 }
 
-// check for a route best node to remove
+//mutate remove heuristic: check for a route best node to remove
 bool MR_heuristic2(Routes* mutation, int* route, int* index, int* amount) {
 
     int r_size = mutation->routes.size();
@@ -2183,16 +1780,6 @@ bool MR_heuristic2(Routes* mutation, int* route, int* index, int* amount) {
 
 // remove random location from route and make it a free location
 Routes* mutate_remove(Routes* mutation) {
-    /*
-        HEURISTIEK:
-            - remove degene die de fitness naar beneden halen
-            - meer kans remove als dicht bij depot
-            - removen als er veel rond een andere route hebben
-            - niet removen als veel errond vrij zijn
-    */
-
-   //cout << "mutate_remove" << endl;
-
     int route;
     int index;
     int amount;
@@ -2203,12 +1790,10 @@ Routes* mutate_remove(Routes* mutation) {
 
     mutation->op_remove(route, index, amount);
 
-    /*if(!mutation->check_locs("mutate_remove")) {
-        cout << "bug";
-    }*/
     return mutation;
 }
 
+// remove locations of given route, index and amount to remove following each other
 void Routes::op_remove(unsigned int r_index, unsigned int index, unsigned int amount) {
     if (r_index >= this->routes.size()) {
         cerr << "MR r_index out of bounds";
@@ -2252,6 +1837,7 @@ void Routes::op_remove(unsigned int r_index, unsigned int index, unsigned int am
     route->fitness = -1.0f;
 }
 
+// reverse random part of random route 
 bool RP_random(Routes* mutation, int* route, int* start, int* stop) {
     // get random route
     int r_size = mutation->routes.size();
@@ -2270,6 +1856,7 @@ bool RP_random(Routes* mutation, int* route, int* start, int* stop) {
     return true;
 }
 
+// reverse part of route that crosses like the 2-OPT heuristic
 bool RP_2_opt(Routes* mutation, int* route, int* start, int* end) {
     // get random route
     int r_size = mutation->routes.size();
@@ -2293,7 +1880,7 @@ bool RP_2_opt(Routes* mutation, int* route, int* start, int* end) {
                 - mutation->vrp->distance(n_start->prev, n_end->location)
                 - mutation->vrp->distance(n_start->location, n_end->next);
             if (d > 0) {
-                // TODO hier kunnen we eigl fitness al zetten!
+                // TODO we can set fitness here of routes
                 return true;
             }
             n_end = &mutation->nodes[n_end->next];
@@ -2310,14 +1897,6 @@ bool RP_2_opt(Routes* mutation, int* route, int* start, int* end) {
 
 // take random part of route and reverse it
 Routes* mutate_reverse_part(Routes* mutation) {
-    /*
-        HEURISTIEK:
-            - reverse part waar begin en einde dicht bij elkaar liggen
-            - maak hier 2-op van!
-    */
-
-    //cout << "mutate_reverse_part" << endl;
-
     int route, start, stop;
 
     if(rand() % 2 == 0) {
@@ -2332,12 +1911,10 @@ Routes* mutate_reverse_part(Routes* mutation) {
 
     mutation->op_reverse_part(route, start, stop);
 
-    /*if (!mutation->check_locs("mutate_reverse_part")) {
-        cout << "BUG";
-    }*/
     return mutation;
 }
 
+// reverse part of route between start and end index
 void Routes::op_reverse_part(unsigned int r_index, unsigned int start_index, unsigned int end_index) {
 
     if (r_index >= this->routes.size()) {
@@ -2391,6 +1968,7 @@ void Routes::op_reverse_part(unsigned int r_index, unsigned int start_index, uns
     route->fitness = -1.0f;
 }
 
+// mutate cross heuristic cross 2 locations of different routes that are close to each other
 bool MC_heuristic1(Routes* mutation, int* route1, int* pos1, int* route2, int* pos2) {
     // 2-opt*
 
@@ -2425,8 +2003,6 @@ bool MC_heuristic1(Routes* mutation, int* route1, int* pos1, int* route2, int* p
                 *pos2 = 0;
                 l2 = &mutation->nodes[rand_route2->start];
             }
-
-
         }
     }
 
@@ -2442,6 +2018,7 @@ bool MC_heuristic1(Routes* mutation, int* route1, int* pos1, int* route2, int* p
     return true;
 }
 
+// mutate cross random heuristic that crosses 2 random locations of 2 random routes
 bool MC_random(Routes* mutation, int* route1, int* pos1, int* route2, int* pos2) {
 
     int r_size = mutation->routes.size();
@@ -2471,15 +2048,9 @@ bool MC_random(Routes* mutation, int* route1, int* pos1, int* route2, int* pos2)
     return true;
 }
 
+// mutate cross take 2 points in 2 routes and devide the in start and end
+// then make a route with start of route 1 and end of route 2 and start 2 and end 1
 Routes* mutate_cross(Routes* mutation) {
-    /*
-        HEURISTIEK:
-            - cross met nodes dicht bij elkaar
-            - cross met nodes met +/- dezelfde index
-    */
-
-   //cout << "mutate_cross" << endl;
-
     int route1, route2, pos1, pos2;
     bool res;
     if(mutation->vrp->getLocations().size() < 400) {
@@ -2493,12 +2064,10 @@ Routes* mutate_cross(Routes* mutation) {
 
     mutation->op_cross(route1, pos1, route2, pos2);
 
-    /*if(!mutation->check_locs("mutate_cross")) {
-        cout << "bug";
-    }*/
     return mutation;
 }
 
+// perform cross on given routes and positions
 void Routes::op_cross(unsigned int r_index1, unsigned int index1, unsigned int r_index2, unsigned int index2) {
 
     if (r_index1 >= this->routes.size() || r_index2 >= this->routes.size()) {
@@ -2543,15 +2112,8 @@ void Routes::op_cross(unsigned int r_index1, unsigned int index1, unsigned int r
     r2->fitness = -1.0f;
 }
 
-bool Routes::check_maxT() {
-    for (Route r : this->routes) {
-        if ( this->getRouteLength(&r) > Vehicle::maxT) {
-            return false;
-        }
-    }
-    return true;
-}
-
+// get diversity between this routes and the given routes
+// percentage of successors and predecessors that are the same between the routes
 float Routes::get_diversity(Routes* routes) {
     if (this == routes) return -1.0f;
     int  res = 0;
@@ -2563,32 +2125,7 @@ float Routes::get_diversity(Routes* routes) {
             res++;
     }
     return 1.0/(2.0 * this->nodes.size()) * res;
-    
-    /*for (Route route1 : this->routes) {
-        int d_min = route1.length;
-        for (Route route2 : routes->routes) {
-            int dist = this->getRouteLevenshteinDist(route1, route2, routes);
-            d_min = min(d_min, dist);
-        }
-        res += (route1.length - d_min) / route1.length;
-    }
-    return res/this->routes.size();
-    */
 }
-/*
-float get_diversity_levenstein(Routes* routes) {
-    if (this == routes) return -1.0f;
-    int  res = 0;
-    for (Route route1 : this->routes) {
-        int d_min = route1.length;
-        for (Route route2 : routes->routes) {
-            int dist = this->getRouteLevenshteinDist(route1, route2, routes);
-            d_min = min(d_min, dist);
-        }
-        res += (route1.length - d_min) / route1.length;
-    }
-    return res/this->routes.size();
-}*/
 
 // Create routes_amount random routes of length route_length using the given locations
 void Routes::make_rnd_routes() {
@@ -2638,6 +2175,7 @@ void Routes::make_rnd_routes() {
 
 Location* depot;
 
+// compare locations based on arctan with depot
 struct comparator {
     comparator(Location* depot) { this->depot = depot; }
     bool operator () (Location* a, Location* b) {
@@ -2650,13 +2188,7 @@ struct comparator {
     Location* depot;
 };
 
-/*bool comparator(Location* a, Location* b) {
-    float arca = atan2(a->x - depot->x, a->y - depot->y);
-    float arcb = atan2(b->x - depot->x, b->y - depot->y);
-
-    return arca < arcb;
-}*/
-
+// make initial routes based on nearest neighbors in circle sector
 void Routes::make_nn_routes() {
     size_t routes_amount = this->vrp->getVehicles().size();
     unsigned int mc = Vehicle::maxCapacity;
@@ -2688,13 +2220,13 @@ void Routes::make_nn_routes() {
 
         unordered_set<int> locs;
 
-        for (int j=0; j<route_length; j++) {
+        for (unsigned int j=0; j<route_length; j++) {
             locs.insert(arr[i*route_length+j]);
         }
 
         int prev = 0;
 
-        for (int j=0; j<route_length; j++) {
+        for (unsigned int j=0; j<route_length; j++) {
             pair<float, int> sm = {FLT_MAX, -1};
             for (int loc : locs) {
                 float dist = this->vrp->distance(prev, loc);
@@ -2726,7 +2258,7 @@ void Routes::make_nn_routes() {
 
 // Create routes_amount routes of length route_length using the given locations
 // partition routes by circle sector
-void Routes::make_heuristic1_routes() {
+void Routes::make_sector_routes() {
     size_t routes_amount = this->vrp->getVehicles().size();
     unsigned int mc = Vehicle::maxCapacity;
     size_t loc_amount = this->vrp->getLocations().size();
@@ -2777,6 +2309,7 @@ void Routes::make_heuristic1_routes() {
     }
 }
 
+// make routes based on the given vectors of location indices
 void Routes::make_routes(vector<int>* rs) {
     size_t routes_amount = this->vrp->getVehicles().size();
     size_t loc_amount = this->vrp->getLocations().size();
@@ -2821,22 +2354,8 @@ void Routes::make_routes(vector<int>* rs) {
         }
     }
 }
-/*
-void Routes::make_empty_routes() {
-    int routes_amount = this->vrp->getVehicles().size();
-    int loc_amount = this->vrp->getLocations().size();
 
-    // assign every route_length random ints to a route and create it
-    for (size_t i = 0; i < routes_amount; i++)
-    {
-        Route* route = new Route();
-        this->routes.push_back(route);
-    }
-
-    for (int i=1; i < loc_amount; i++)
-        this->free_locations.push_back(i);
-}*/
-
+// insert a sequense form begin to end in the given route at the given position
 void Routes::insertAt(Route* route, int pos, RouteNode* begin, RouteNode* end) {
     if (route->start == 0) {
         begin->prev = 0;
@@ -2869,29 +2388,17 @@ void Routes::insertAt(Route* route, int pos, RouteNode* begin, RouteNode* end) {
     } 
 }
 
-void Routes::addLocation(unsigned int loc) {
-    size_t nodes_size = this->nodes.size();
-    if (nodes_size == loc) {
-        this->nodes.push_back({loc, -1, -1});
-    } else if (loc < nodes_size && (this->nodes[loc].prev != -1 || this->nodes[loc].next != -1)) {
-        cerr << "Error: added location was not set to NULL!" << endl;
-        exit(-1);
-    } else if (loc > nodes_size) {
-        cerr << "Error: added location to high!" << endl;
-        exit(-1);
-    }
-
-    this->free_locations.push_back(loc);
-}
-
+// get location next to the given node
 int Routes::next(int node) {
     return nodes[node].next;
 }
 
+// get location previous to the given node
 int Routes::prev(int node) {
     return nodes[node].prev;
 }
 
+// get location on the given position of the given route
 int Routes::getPos(int n, Route& route) {
     int curr = route.start;
     for (int i=0; i<n; i++) {
@@ -2900,6 +2407,7 @@ int Routes::getPos(int n, Route& route) {
     return curr;
 }
 
+// get the route and the index of a location
 void Routes::getRouteIndex(int loc, int* route, int* index) {
 
     RouteNode* node = &this->nodes[loc];
@@ -2925,6 +2433,7 @@ void Routes::getRouteIndex(int loc, int* route, int* index) {
     }
 }
 
+// fill a mapping that maps each location to it's route
 void Routes::fill_location_route_map() {
     for (unsigned int i=0; i< this->routes.size(); i++) {
         int c = this->routes[i].start;
@@ -2938,6 +2447,7 @@ void Routes::fill_location_route_map() {
     }
 }
 
+// perform a random mutation on this routes and store in mutation
 Routes *Routes::mutate(Routes *mutation, bool clone) {
     if (clone)
         this->clone_to(mutation);
@@ -2954,17 +2464,11 @@ Routes *Routes::mutate(Routes *mutation, bool clone) {
     Routes* result;
     int mut;
 
-    //auto startt = std::chrono::system_clock::now();
-
     do {
         mut = rand() % mutations.size();
         result = mutations[mut](mutation);
-        //cout << (result == NULL) << " " << check_maxT() << " " << mut << endl;
     } while (result == NULL);
 
-    //mutation->check_locs("mutate3");
-    //auto t = std::chrono::system_clock::now() - startt;
-    //cout << mut << ": " << t.count() << endl;
     result->last_mutation = mut;
 
     return result;

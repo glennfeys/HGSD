@@ -1,5 +1,6 @@
 #include "DVRPD.h"
 
+// constructor for VRP with giveven amount of drones and vehicles
 DVRPD::DVRPD(unsigned int drones, unsigned int vehicles) {
     this->location_map = new unordered_set<int>[MAP_WIDTH*MAP_HEIGHT];
     
@@ -16,6 +17,7 @@ DVRPD::DVRPD(unsigned int drones, unsigned int vehicles) {
     }
 }
 
+// constructor for VRP from a vrp file with given amount of drones and vehicles
 DVRPD::DVRPD(string path, unsigned int drones, unsigned int vehicles) {
     string line;
     ifstream myfile(path);
@@ -121,10 +123,12 @@ float randomFloat(float min, float max) {
     return min + r;
 }
 
+// create random location between (0,0) and (max_x, max_y)
 void DVRPD::add_rand_location(float max_x, float max_y) {
     addLocation(randomFloat(0, max_x), randomFloat(0, max_y));
 }
 
+// create amount random locations between (0,0) and (max_x, max_y)
 void DVRPD::createRandomLocations(unsigned int amount, float max_x, float max_y) {
     for (size_t i = 0; i < amount; i++)
     {
@@ -132,6 +136,7 @@ void DVRPD::createRandomLocations(unsigned int amount, float max_x, float max_y)
     }
 }
 
+// Add location to the VRP and fill distance matrix and location_map
 Location* DVRPD::addLocation(float x, float y) {
 
     Location* location;
@@ -171,6 +176,7 @@ Location* DVRPD::addLocation(float x, float y) {
     return location;
 }
 
+// remove location from vrp
 void DVRPD::removeLocation(int loc) {
     this->free_ids.insert(loc);
     delete this->locations[loc];
@@ -189,10 +195,7 @@ vector<Drone*>& DVRPD::getDrones() {
     return this->drones;
 }
 
-int randNum(int min, int max) {
-    return rand() % (max-min) + min;
-}
-
+// get neighbours of location with given index and range of blocks around the location
 unordered_set<int> DVRPD::getNeighbours(int index, int range) {
     Location* loc = this->locations[index];
     int x = loc->x / (MAX_X/MAP_WIDTH);
@@ -213,6 +216,7 @@ unordered_set<int> DVRPD::getNeighbours(int index, int range) {
     return result;
 }
 
+// get random neighbour of location with given index within range of blocks around the location
 int DVRPD::getRandomNeighbour(int index, int range) {
     Location* loc = this->locations[index];
     int x = loc->x / (MAX_X/MAP_WIDTH);
@@ -237,10 +241,12 @@ int DVRPD::getRandomNeighbour(int index, int range) {
     return *curr;
 }
 
+// Euclidian distance between location a and b
 float DVRPD::distance(int a, int b) {
     return this->distance_matrix[max(a, b)][min(a, b)];
 }
 
+// get drone uneligible locations based on index for 30% and 70% based on furthest location from depot 
 unordered_set<int>& DVRPD::getDroneUneligible() {
     if (this->droneEligible == 100 || this->drone_unelgible.size() != 0) {
         return this->drone_unelgible;
@@ -268,6 +274,7 @@ unordered_set<int>& DVRPD::getDroneUneligible() {
     return this->drone_unelgible;
 }
 
+// get drone uneligible locations based on capacity
 unordered_set<int>& DVRPD::getDroneUneligibleCapacity() {
     if (this->droneEligible == 100 || this->drone_unelgible.size() != 0) {
         return this->drone_unelgible;
@@ -289,6 +296,7 @@ unordered_set<int>& DVRPD::getDroneUneligibleCapacity() {
     return this->drone_unelgible;
 }
 
+// Add demand capacity to location with index
 float DVRPD::addCapacity(unsigned int index, float capacity) {
     while (index >= this->capacities.size()) {
         this->capacities.push_back(0.0f);

@@ -18,7 +18,6 @@ using namespace std;
 class Drone
 {
 private:
-    /* data */
     
 public:
     static const int maxCapacity = DRONE_CAPACITY;
@@ -28,7 +27,7 @@ public:
     static const int dropTime = DROP_TIME;
     static const int speedFactor = DRONE_SPEED_FACTOR;
 
-    Drone(/* args */);
+    Drone();
     ~Drone();
 };
 

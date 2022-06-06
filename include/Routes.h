@@ -37,9 +37,7 @@ class Routes
     public:
         vector<RouteNode> nodes;
         vector<int> free_locations;
-        // todo kan dit geen array worden?
         vector<Route> routes;
-        Routes* best1;
         DVRPD* vrp;
         int id;
 
@@ -52,48 +50,35 @@ class Routes
         Routes(DVRPD* vrp);
         ~Routes();
 
-        float getBiasedFitness();
         float getFitness();
-        float getFitnessRatio();
-        float getFitnessRatio2();
-        float getFitnessRatio3();
-        float getFitnessRatio4();
+        float getFitnessDeliveriesPerHour();
+        float getFitnessDeliveriesPerDistance();
         float getFitnessMakespan();
-        float getBiasedFitnessRatio();
-        float getFitnessDistance();
-        float getFitnessDistMin();
-        float getFitnessDistMinRatio();
-        float getFitnessDistMin2();
-        float getFitnessDistMinRatio2();
-        int getFitnessAmount();
+        float getTotalDistance();
+        float getMakespanManhattan();
+        float getFitnessMakespanManhattan();
+        float getMakespan();
+        float getMakespanTime();
         Routes* cross_over(Routes* routes, Routes* mutation);
         Routes* mutate(Routes* mutation, bool clone);
-        void remove_locations(unordered_set<int>& locations);
-        //void remove_locations2(unordered_set<int> locations);
         void clone_to(Routes* mutation);
         void print(ostream& file);
-        bool check_routes();
         bool check_inf_loop();
-        //bool check_doubles();
-        bool check_locs(string name);
-        bool check_maxT();
+        bool check_routes(string name);
         float get_diversity(Routes* routes);
 
         void make_rnd_routes();
-        void make_heuristic1_routes();
+        void make_sector_routes();
         void make_nn_routes();
         void make_empty_routes();
         void make_routes(vector<int>* rs);
         void insertAt(Route* route, int pos, RouteNode* begin, RouteNode* end);
-        void addLocation(unsigned int loc);
         int next(int node);
         int prev(int node);
         int getPos(int n, Route& route);
-        float getRouteLength(Route* route);
+        float getRouteDistance(Route* route);
         int getCOprev(int n, unordered_set<int>& locations, int end_sec, int end_sec_d);
         int getCOnext(int n, unordered_set<int>& locations, int start_sec);
-        int* routeToArray(Route& route);
-        int getRouteLevenshteinDist(Route& route1, Route& route2, Routes* mutation);
         void getRouteIndex(int loc, int* route, int* index);
         void LPT(vector<int>* result);
 
@@ -108,7 +93,6 @@ class Routes
 
         void fill_location_route_map();
         void routes_from_file(string file);
-        
 };
 
 #endif
