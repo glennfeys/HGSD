@@ -40,8 +40,6 @@ class Routes
         // todo kan dit geen array worden?
         vector<Route> routes;
         Routes* best1;
-        Routes* best2;
-        Routes* best3;
         DVRPD* vrp;
         int id;
 
@@ -70,7 +68,7 @@ class Routes
         int getFitnessAmount();
         Routes* cross_over(Routes* routes, Routes* mutation);
         Routes* mutate(Routes* mutation, bool clone);
-        void remove_locations(unordered_set<int> locations);
+        void remove_locations(unordered_set<int>& locations);
         //void remove_locations2(unordered_set<int> locations);
         void clone_to(Routes* mutation);
         void print(ostream& file);
@@ -92,16 +90,17 @@ class Routes
         int prev(int node);
         int getPos(int n, Route& route);
         float getRouteLength(Route* route);
-        int getCOprev(int n, unordered_set<int> locations, int end_sec, int end_sec_d);
-        int getCOnext(int n, unordered_set<int> locations, int start_sec);
+        int getCOprev(int n, unordered_set<int>& locations, int end_sec, int end_sec_d);
+        int getCOnext(int n, unordered_set<int>& locations, int start_sec);
         int* routeToArray(Route& route);
         int getRouteLevenshteinDist(Route& route1, Route& route2, Routes* mutation);
         void getRouteIndex(int loc, int* route, int* index);
+        void LPT(vector<int>* result);
 
         void op_swap_free(unsigned int r_index, unsigned int index, unsigned int fl_index);
         void op_swap_pos(unsigned int r_index, unsigned int index, unsigned int len, unsigned int insert_pos);
         void op_cross_over_m(unsigned int r_index1, unsigned int index1, unsigned int len1, unsigned int r_index2, unsigned int index2, unsigned int len2);
-        void op_add(unsigned int r_index, unsigned int index, unordered_set<int> locs);
+        void op_add(unsigned int r_index, unsigned int index, unordered_set<int>& locs);
         void op_remove(unsigned int r_index, unsigned int index, unsigned int amount);
         void op_reverse_part(unsigned int r_index, unsigned int start_index, unsigned int end_index);
         void op_cross(unsigned int r_index1, unsigned int index1, unsigned int r_index2, unsigned int index2);

@@ -177,15 +177,15 @@ void DVRPD::removeLocation(int loc) {
     this->locations[loc] = NULL;
 }
 
-vector<Location*> DVRPD::getLocations() {
+vector<Location*>& DVRPD::getLocations() {
     return this->locations;
 }
 
-vector<Vehicle*> DVRPD::getVehicles() {
+vector<Vehicle*>& DVRPD::getVehicles() {
     return this->vehicles;
 }
 
-vector<Drone*> DVRPD::getDrones() {
+vector<Drone*>& DVRPD::getDrones() {
     return this->drones;
 }
 
@@ -241,7 +241,7 @@ float DVRPD::distance(int a, int b) {
     return this->distance_matrix[max(a, b)][min(a, b)];
 }
 
-unordered_set<int> DVRPD::getDroneUneligible() {
+unordered_set<int>& DVRPD::getDroneUneligible() {
     if (this->droneEligible == 100 || this->drone_unelgible.size() != 0) {
         return this->drone_unelgible;
     }
@@ -268,7 +268,7 @@ unordered_set<int> DVRPD::getDroneUneligible() {
     return this->drone_unelgible;
 }
 
-unordered_set<int> DVRPD::getDroneUneligibleCapacity() {
+unordered_set<int>& DVRPD::getDroneUneligibleCapacity() {
     if (this->droneEligible == 100 || this->drone_unelgible.size() != 0) {
         return this->drone_unelgible;
     }

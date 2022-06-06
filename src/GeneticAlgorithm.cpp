@@ -560,7 +560,7 @@ int main(int argc, char *argv[])
     srand((unsigned)(time(0)));
 
     if (argc != 5 && argc != 7) {
-        cout << "USAGE: ./dvrpd <vrp_path> <vehicles_amount> <drones_amount> <thread_num> <max_time> <out_file>" << endl;
+        cout << "USAGE: ./hgsd <vrp_path> <vehicles_amount> <drones_amount> <thread_num> <max_time> <out_file>" << endl;
         exit(1);
     }
 

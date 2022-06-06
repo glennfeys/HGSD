@@ -67,7 +67,7 @@ float Routes::getFitnessDistMin() {
     float res = 0;
 
     Location* depot = vrp->depot;
-    vector<Location*> locs = vrp->getLocations();
+    vector<Location*>& locs = vrp->getLocations();
 
     for (Route r : this->routes) {
         float fitness = 0.0;
@@ -132,7 +132,7 @@ float Routes::getFitnessDistMin() {
     }
 
     if (DVRPD::droneEligible < 100) {
-        unordered_set<int> uneligible = this->vrp->getDroneUneligible();
+        unordered_set<int>& uneligible = this->vrp->getDroneUneligible();
 
         for (int fl : this->free_locations) {
             if (uneligible.find(fl) != uneligible.end()) {
@@ -152,7 +152,7 @@ float Routes::getFitnessDistMinRatio() {
     vector<pair<int, float>> ts;
 
     Location* depot = vrp->depot;
-    vector<Location*> locs = vrp->getLocations();
+    vector<Location*>& locs = vrp->getLocations();
 
     for (Route r : this->routes) {
         float r_length = 0.0;
@@ -232,7 +232,7 @@ float Routes::getFitnessDistMinRatio() {
     }
 
     if (DVRPD::droneEligible < 100) {
-        unordered_set<int> uneligible = this->vrp->getDroneUneligible();
+        unordered_set<int>& uneligible = this->vrp->getDroneUneligible();
 
         for (int fl : this->free_locations) {
             if (uneligible.find(fl) != uneligible.end()) {
@@ -246,9 +246,6 @@ float Routes::getFitnessDistMinRatio() {
 
 float Routes::getFitnessDistMin2() {
     float res = 0;
-
-    Location* depot = vrp->depot;
-    vector<Location*> locs = vrp->getLocations();
 
     for (Route r : this->routes) {
         float fitness = 0.0;
@@ -311,7 +308,7 @@ float Routes::getFitnessDistMin2() {
     }
 
     if (DVRPD::droneEligible < 100) {
-        unordered_set<int> uneligible = this->vrp->getDroneUneligibleCapacity();
+        unordered_set<int>& uneligible = this->vrp->getDroneUneligibleCapacity();
 
         for (int fl : this->free_locations) {
             if (uneligible.find(fl) != uneligible.end()) {
@@ -329,9 +326,6 @@ float Routes::getFitnessDistMinRatio2() {
     float fitness = 0.0;
 
     vector<pair<int, float>> ts;
-
-    Location* depot = vrp->depot;
-    vector<Location*> locs = vrp->getLocations();
 
     for (Route r : this->routes) {
         float r_length = 0.0;
@@ -426,7 +420,7 @@ float Routes::getFitnessDistMinRatio2() {
     }
 
     if (DVRPD::droneEligible < 100) {
-        unordered_set<int> uneligible = this->vrp->getDroneUneligibleCapacity();
+        unordered_set<int>& uneligible = this->vrp->getDroneUneligibleCapacity();
 
         for (int fl : this->free_locations) {
             if (uneligible.find(fl) != uneligible.end()) {
@@ -922,7 +916,7 @@ int random_num(int start, int end)
     return random_int;
 }
 
-int Routes::getCOprev(int n, unordered_set<int> locations, int end_sec, int end_sec_d) {
+int Routes::getCOprev(int n, unordered_set<int>& locations, int end_sec, int end_sec_d) {
     RouteNode curr = this->nodes[n];
 
     int prev = curr.prev;
@@ -939,7 +933,7 @@ int Routes::getCOprev(int n, unordered_set<int> locations, int end_sec, int end_
     return prev;
 }
 
-int Routes::getCOnext(int n, unordered_set<int> locations, int start_sec) {
+int Routes::getCOnext(int n, unordered_set<int>& locations, int start_sec) {
     RouteNode curr = this->nodes[n];
 
     int next=curr.next;
@@ -1155,7 +1149,7 @@ bool Routes::check_locs(string name) {
 }
 
 // remove locations out of the routes except for the sequence starting from exclude with length exclude_len
-void Routes::remove_locations(unordered_set<int> locations) {
+void Routes::remove_locations(unordered_set<int>& locations) {
     // remove locations from free_locations
     for (int location : locations) {
         vector<int>::iterator position = find(this->free_locations.begin(), this->free_locations.end(), location);
@@ -1171,35 +1165,61 @@ void Routes::remove_locations(unordered_set<int> locations) {
     }
 }
 
+void Routes::LPT(vector<int>* result) {
+    vector<pair<float, int>> dists;
+    for (int fl : this->free_locations) {
+        dists.push_back({2*this->vrp->distance(fl,0), fl});
+    }
+    sort(dists.begin(), dists.end());
+
+    int drones = this->vrp->getDrones().size();
+
+    float ds[drones] = {};
+
+    while (dists.size() > 0) {
+        int sm = 0;
+        for (int i=0; i<drones; i++) {
+            if (ds[i] < ds[sm]) {
+                sm = i;
+            }
+        }
+        ds[sm] += dists.back().first/Drone::speedFactor;
+        result[sm].push_back(dists.back().second);
+        dists.pop_back();
+    }
+
+}
+
 void Routes::print(ostream& file) {
-    cout << "locs: " << this->vrp->getLocations().size() << endl; 
-    file << "Depot:" << endl;
-        this->vrp->depot->print(file);
-    file << endl << "Routes:" << endl;
-    int ls = 0;
+    int route_index = 1;
+
     for (Route route : this->routes) {
         int curr = route.start;
-        //ls += route.length;
-        file << "[";
+        
+        file << "Truck Route #" << route_index << ":";
+        route_index++;
 
         while (curr != 0) {
-            this->vrp->getLocations()[curr]->print(file);
-            file << ", ";
+            file << " " << curr;
             curr = this->next(curr);
-            ls++;
         }
+        file << endl;
+    }
 
-        file << "]" << endl;
+    int drones = this->vrp->getDrones().size();
+
+    vector<int> drone_routes[drones] = {};
+    this->LPT(drone_routes);
+
+    for (int i=0; i<drones; i++) {
+        file << "Drone Route #" << route_index << ":";
+        route_index++;
+        for(int location : drone_routes[i]) {
+            file << " " << location;
+        }
+        file << endl;
     }
-    file << "free locations:" << endl;
-    ls+=this->free_locations.size();
-    for (int location : this->free_locations) {
-        
-        this->vrp->getLocations()[location]->print(file);
-        file << ", ";
-    }
-    cout << "locs2:" << ls << endl;
-    file << endl;
+    file << "Makespan " << this->getFitnessDistMin2();
 }
 
 // clone this routes to given pointer
@@ -1995,7 +2015,7 @@ Routes* mutate_add(Routes* mutation) {
     return mutation;
 }
 
-void Routes::op_add(unsigned int r_index, unsigned int index, unordered_set<int> locs) {
+void Routes::op_add(unsigned int r_index, unsigned int index, unordered_set<int>& locs) {
     if (r_index >= this->routes.size()) {
         cerr << "MA r_index out of bounds: " << r_index;
         exit(-1);
